@@ -14,7 +14,19 @@
 # limitations under the License.
 
 import os
+# Force CPU mode
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
+# Now patch torch.cuda before it's imported anywhere else
 import torch
+# Override torch.cuda.is_available to always return False
+torch.cuda.is_available = lambda: False
+# Override device_count to prevent CUDA initialization attempts
+torch.cuda.device_count = lambda: 0
+# Patch the core CUDA function that's causing the error
+if hasattr(torch._C, "_cuda_getDeviceCount"):
+    torch._C._cuda_getDeviceCount = lambda: 0
+
 import soundfile as sf
 import logging
 import argparse
@@ -27,7 +39,8 @@ from sparktts.utils.token_parser import LEVELS_MAP_UI
 def initialize_model(model_dir="pretrained_models/Spark-TTS-0.5B", device=0):
     """Load the model once at the beginning."""
     logging.info(f"Loading model from: {model_dir}")
-    device = torch.device(f"cuda:{device}")
+    # Always use CPU regardless of requested device
+    device = torch.device("cpu")
     model = SparkTTS(model_dir, device)
     return model
 
